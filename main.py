@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import requests
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget,
@@ -125,26 +126,34 @@ class MainWindow(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.poll_device)
         self.timer.start(1000)
-
+        
     def poll_device(self):
         try:
             lockdown = create_using_usbmux()
             info = lockdown.get_value()
 
-            product = info.get('ProductType')
-            version = info.get('ProductVersion')
+            product = info.get('ProductType')    # Например, iPhone5,2
+            version = info.get('ProductVersion') # Например, 9.3.5
 
-            if product not in SUPPORTED_DEVICES:
-                self._set_state(f'Unsupported Device: {product}', False)
+            # Формируем запрос к твоему PHP скрипту
+            # Замени URL на свой реальный адрес
+            check_url = f"http://bobik.atwebpages.com/checking.php?model={product}&version={version}"
+            
+            try:
+                response = requests.get(check_url, timeout=3)
+                is_supported = response.text.strip() == "true"
+            except Exception:
+                self._set_state("Server connection error", False)
                 return
 
-            if version not in SUPPORTED_VERSIONS:
-                self._set_state(f'Unsupported iOS version: {version}', False)
+            # Проверка ответа от сервера
+            if not is_supported:
+                self._set_state(f'Unsupported: {product} ({version})', False)
                 return
             
-             # https://github.com/overcast302/A5_Bypass_OSS/issues/7
+            # Специфическая проверка для iOS 8.4.1 из оригинала (если нужно оставить)
             if version == '8.4.1' and info.get('TelephonyCapability'):
-                self._set_state(f'Unsupported Device({product}) iOS version: {version}', False)
+                self._set_state(f'Unsupported Device({product}) iOS 8.4.1', False)
                 return
             
             self._set_state(f'Connected: {product} ({version})', True)
