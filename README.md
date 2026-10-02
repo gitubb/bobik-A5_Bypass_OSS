@@ -39,3 +39,4 @@ The PC client is fully offline.
 ## License
 
 Refer to the repository license file for licensing details.
+Windows build test
